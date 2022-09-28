@@ -121,32 +121,6 @@ function getBodyChildrenBlocks(body: string): Exclude<CreatePageParameters['chil
   ];
 }
 
-interface IssueOpenedOptions {
-  notion: {
-    client: Client;
-    databaseId: string;
-  };
-  payload: IssuesOpenedEvent;
-  octokit: Octokit;
-}
-
-async function handleIssueOpened(options: IssueOpenedOptions) {
-  const {notion, payload} = options;
-
-  core.info(`Creating page for issue #${payload.issue.number}`);
-
-  await notion.client.pages.create({
-    parent: {
-      database_id: notion.databaseId,
-    },
-    properties: await parsePropertiesFromPayload({
-      payload,
-      octokit: options.octokit,
-    }),
-    children: getBodyChildrenBlocks(payload.issue.body),
-  });
-}
-
 interface IssueEditedOptions {
   notion: {
     client: Client;
@@ -293,16 +267,7 @@ export async function run(options: Options) {
   });
   const octokit = new Octokit({auth: github.token});
 
-  if (github.payload.action === 'opened') {
-    await handleIssueOpened({
-      notion: {
-        client: notionClient,
-        databaseId: notion.databaseId,
-      },
-      payload: github.payload as IssuesOpenedEvent,
-      octokit,
-    });
-  } else if (github.eventName === 'workflow_dispatch') {
+  if (github.eventName === 'workflow_dispatch') {
     const notion = new Client({auth: options.notion.token});
     const {databaseId} = options.notion;
     const issuePageIds = await createIssueMapping(notion, databaseId);

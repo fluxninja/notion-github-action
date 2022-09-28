@@ -38026,7 +38026,7 @@ function removeHTML(text) {
     var _a;
     return (_a = text === null || text === void 0 ? void 0 : text.replace(/<.*>.*<\/.*>/g, '')) !== null && _a !== void 0 ? _a : '';
 }
-function parsePropertiesFromPayload(options) {
+function fetchProperties(options) {
     var _a, _b, _c, _d, _e, _f, _g;
     return __awaiter(this, void 0, void 0, function* () {
         const { payload, octokit, possibleProject } = options;
@@ -38038,6 +38038,14 @@ function parsePropertiesFromPayload(options) {
             possible: possibleProject,
         });
         core.debug(`Current project data: ${JSON.stringify(projectData, null, 2)}`);
+        const gitHubRepo = getRepoFullNameFromPayload(payload);
+        const issue = yield octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', {
+            owner: getOwnerFromRepoFullName(gitHubRepo),
+            repo: getRepoNameFromRepoFullName(gitHubRepo),
+            issue_number: payload.issue.number,
+        });
+        // print issue
+        console.log(issue);
         const result = {
             Name: properties_1.properties.title(payload.issue.title),
             Status: properties_1.properties.getStatusSelectOption(payload.issue.state),
@@ -38063,8 +38071,8 @@ function getProjectData(options) {
     return __awaiter(this, void 0, void 0, function* () {
         const { octokit, githubRepo, issueNumber, possible } = options;
         const projects = (yield octokit.rest.projects.listForRepo({
-            owner: githubRepo.split('/')[0],
-            repo: githubRepo.split('/')[1],
+            owner: getOwnerFromRepoFullName(githubRepo),
+            repo: getRepoNameFromRepoFullName(githubRepo),
         })).data || [];
         projects.sort(p => (p.name === (possible === null || possible === void 0 ? void 0 : possible.name) ? -1 : 1));
         core.debug(`Found ${projects.length} projects.`);
@@ -38105,6 +38113,15 @@ function getBodyChildrenBlocks(body) {
         },
     ];
 }
+function getRepoFullNameFromPayload(payload) {
+    return payload.repository.full_name;
+}
+function getOwnerFromRepoFullName(gitHubRepo) {
+    return gitHubRepo.split('/')[0];
+}
+function getRepoNameFromRepoFullName(gitHubRepo) {
+    return gitHubRepo.split('/')[1];
+}
 function handleIssueEdited(options) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
@@ -38127,7 +38144,7 @@ function handleIssueEdited(options) {
             core.info(`Updating page for issue #${payload.issue.number}`);
             yield notion.client.pages.update({
                 page_id: pageId,
-                properties: yield parsePropertiesFromPayload({ payload, octokit }),
+                properties: yield fetchProperties({ payload, octokit }),
             });
             const existingBlocks = (yield notion.client.blocks.children.list({
                 block_id: pageId,
@@ -38153,7 +38170,7 @@ function handleIssueEdited(options) {
                 parent: {
                     database_id: notion.databaseId,
                 },
-                properties: yield parsePropertiesFromPayload({ payload, octokit }),
+                properties: yield fetchProperties({ payload, octokit }),
                 children: bodyBlocks,
             })
                 .then(() => {
@@ -38185,7 +38202,7 @@ function handleIssueEdited(options) {
         core.info(`Updating page for issue #${payload.issue.number}`);
         yield notion.client.pages.update({
             page_id: pageId,
-            properties: yield parsePropertiesFromPayload({
+            properties: yield fetchProperties({
                 payload,
                 octokit: options.octokit,
                 possibleProject: possible,

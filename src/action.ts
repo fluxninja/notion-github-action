@@ -18,7 +18,7 @@ interface PayloadParsingOptions {
   octokit: Octokit;
   possibleProject?: ProjectData;
 }
-async function parsePropertiesFromPayload(options: PayloadParsingOptions): Promise<CustomValueMap> {
+async function fetchProperties(options: PayloadParsingOptions): Promise<CustomValueMap> {
   const {payload, octokit, possibleProject} = options;
 
   payload.issue.labels?.map(label => label.color);
@@ -31,6 +31,15 @@ async function parsePropertiesFromPayload(options: PayloadParsingOptions): Promi
   });
 
   core.debug(`Current project data: ${JSON.stringify(projectData, null, 2)}`);
+
+  const gitHubRepo = getRepoFullNameFromPayload(payload);
+  const issue = await octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', {
+    owner: getOwnerFromRepoFullName(gitHubRepo),
+    repo: getRepoNameFromRepoFullName(gitHubRepo),
+    issue_number: payload.issue.number,
+  });
+  // print issue
+  console.log(issue);
 
   const result: CustomValueMap = {
     Name: properties.title(payload.issue.title),
@@ -72,8 +81,8 @@ export async function getProjectData(
   const projects =
     (
       await octokit.rest.projects.listForRepo({
-        owner: githubRepo.split('/')[0],
-        repo: githubRepo.split('/')[1],
+        owner: getOwnerFromRepoFullName(githubRepo),
+        repo: getRepoNameFromRepoFullName(githubRepo),
       })
     ).data || [];
   projects.sort(p => (p.name === possible?.name ? -1 : 1));
@@ -121,6 +130,18 @@ function getBodyChildrenBlocks(body: string): Exclude<CreatePageParameters['chil
   ];
 }
 
+function getRepoFullNameFromPayload(payload: IssuesEvent) {
+  return payload.repository.full_name;
+}
+
+function getOwnerFromRepoFullName(gitHubRepo: string) {
+  return gitHubRepo.split('/')[0];
+}
+
+function getRepoNameFromRepoFullName(gitHubRepo: string) {
+  return gitHubRepo.split('/')[1];
+}
+
 interface IssueEditedOptions {
   notion: {
     client: Client;
@@ -156,7 +177,7 @@ async function handleIssueEdited(options: IssueEditedOptions) {
 
     await notion.client.pages.update({
       page_id: pageId,
-      properties: await parsePropertiesFromPayload({payload, octokit}),
+      properties: await fetchProperties({payload, octokit}),
     });
 
     const existingBlocks = (
@@ -196,7 +217,7 @@ async function handleIssueEdited(options: IssueEditedOptions) {
         parent: {
           database_id: notion.databaseId,
         },
-        properties: await parsePropertiesFromPayload({payload, octokit}),
+        properties: await fetchProperties({payload, octokit}),
         children: bodyBlocks,
       })
       .then(() => {
@@ -236,7 +257,7 @@ async function handleIssueEdited(options: IssueEditedOptions) {
 
   await notion.client.pages.update({
     page_id: pageId,
-    properties: await parsePropertiesFromPayload({
+    properties: await fetchProperties({
       payload,
       octokit: options.octokit,
       possibleProject: possible,

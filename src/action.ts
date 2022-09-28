@@ -1,6 +1,6 @@
 import {Client, LogLevel} from '@notionhq/client/build/src';
 import * as core from '@actions/core';
-import type {IssuesEvent, IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema';
+import type {IssuesEvent} from '@octokit/webhooks-definitions/schema';
 import type {WebhookPayload} from '@actions/github/lib/interfaces';
 import {CustomValueMap, properties} from './properties';
 import {createIssueMapping, syncNotionDBWithGitHub} from './sync';

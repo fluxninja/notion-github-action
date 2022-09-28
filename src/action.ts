@@ -33,29 +33,30 @@ async function fetchProperties(options: PayloadParsingOptions): Promise<CustomVa
   core.debug(`Current project data: ${JSON.stringify(projectData, null, 2)}`);
 
   const gitHubRepo = getRepoFullNameFromPayload(payload);
-  const issue = await octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', {
+  const issueResp = await octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', {
     owner: getOwnerFromRepoFullName(gitHubRepo),
     repo: getRepoNameFromRepoFullName(gitHubRepo),
     issue_number: payload.issue.number,
   });
-  // print issue
-  console.log(issue);
+  if (issueResp.status !== 200) {
+    throw new Error(`Failed to fetch issue data: ${issueResp.status}`);
+  }
 
   const result: CustomValueMap = {
-    Name: properties.title(payload.issue.title),
-    Status: properties.getStatusSelectOption(payload.issue.state!),
+    Name: properties.title(issueResp.data.title),
+    Status: properties.getStatusSelectOption(issueResp.data.state!),
     Organization: properties.text(payload.organization?.login ?? ''),
     Repository: properties.text(payload.repository.name),
-    Number: properties.number(payload.issue.number),
-    Body: properties.richText(parseBodyRichText(payload.issue.body)),
-    Assignees: properties.multiSelect(payload.issue.assignees.map(assignee => assignee.login)),
-    Milestone: properties.text(payload.issue.milestone?.title ?? ''),
-    Labels: properties.multiSelect(payload.issue.labels?.map(label => label.name) ?? []),
-    Author: properties.text(payload.issue.user.login),
-    Created: properties.date(payload.issue.created_at),
-    Updated: properties.date(payload.issue.updated_at),
-    ID: properties.number(payload.issue.id),
-    Link: properties.url(payload.issue.html_url),
+    Number: properties.number(issueResp.data.number),
+    Body: properties.richText(parseBodyRichText(issueResp.data.body)),
+    Assignees: properties.multiSelect(issueResp.data.assignees.map(assignee => assignee.login)),
+    Milestone: properties.text(issueResp.data.milestone?.title ?? ''),
+    Labels: properties.multiSelect(issueResp.data.labels?.map(label => label.name) ?? []),
+    Author: properties.text(issueResp.data.user.login),
+    Created: properties.date(issueResp.data.created_at),
+    Updated: properties.date(issueResp.data.updated_at),
+    ID: properties.number(issueResp.data.id),
+    Link: properties.url(issueResp.data.html_url),
     Project: properties.text(projectData?.name || ''),
     'Project Column': properties.text(projectData?.columnName || ''),
   };

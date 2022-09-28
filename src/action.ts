@@ -1,6 +1,6 @@
 import {Client, LogLevel} from '@notionhq/client/build/src';
 import * as core from '@actions/core';
-import type {IssuesEvent} from '@octokit/webhooks-definitions/schema';
+import type {IssuesEvent, Issue} from '@octokit/webhooks-definitions/schema';
 import type {WebhookPayload} from '@actions/github/lib/interfaces';
 import {CustomValueMap, properties} from './properties';
 import {createIssueMapping, syncNotionDBWithGitHub} from './sync';
@@ -42,21 +42,23 @@ async function fetchProperties(options: PayloadParsingOptions): Promise<CustomVa
     throw new Error(`Failed to fetch issue data: ${issueResp.status}`);
   }
 
+  const issue = issueResp.data as Issue;
+
   const result: CustomValueMap = {
-    Name: properties.title(issueResp.data.title),
-    Status: properties.getStatusSelectOption(issueResp.data.state!),
+    Name: properties.title(issue.title),
+    Status: properties.getStatusSelectOption(issue.state!),
     Organization: properties.text(payload.organization?.login ?? ''),
     Repository: properties.text(payload.repository.name),
-    Number: properties.number(issueResp.data.number),
-    Body: properties.richText(parseBodyRichText(issueResp.data.body)),
-    Assignees: properties.multiSelect(issueResp.data.assignees.map(assignee => assignee.login)),
-    Milestone: properties.text(issueResp.data.milestone?.title ?? ''),
-    Labels: properties.multiSelect(issueResp.data.labels?.map(label => label.name) ?? []),
-    Author: properties.text(issueResp.data.user.login),
-    Created: properties.date(issueResp.data.created_at),
-    Updated: properties.date(issueResp.data.updated_at),
-    ID: properties.number(issueResp.data.id),
-    Link: properties.url(issueResp.data.html_url),
+    Number: properties.number(issue.number),
+    Body: properties.richText(parseBodyRichText(issue.body)),
+    Assignees: properties.multiSelect(issue.assignees.map(assignee => assignee.login)),
+    Milestone: properties.text(issue.milestone?.title ?? ''),
+    Labels: properties.multiSelect(issue.labels?.map(label => label.name) ?? []),
+    Author: properties.text(issue.user.login),
+    Created: properties.date(issue.created_at),
+    Updated: properties.date(issue.updated_at),
+    ID: properties.number(issue.id),
+    Link: properties.url(issue.html_url),
     Project: properties.text(projectData?.name || ''),
     'Project Column': properties.text(projectData?.columnName || ''),
   };

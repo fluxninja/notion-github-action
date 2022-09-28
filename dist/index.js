@@ -38039,28 +38039,30 @@ function fetchProperties(options) {
         });
         core.debug(`Current project data: ${JSON.stringify(projectData, null, 2)}`);
         const gitHubRepo = getRepoFullNameFromPayload(payload);
-        const issue = yield octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', {
+        const issueResp = yield octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', {
             owner: getOwnerFromRepoFullName(gitHubRepo),
             repo: getRepoNameFromRepoFullName(gitHubRepo),
             issue_number: payload.issue.number,
         });
-        // print issue
-        console.log(issue);
+        if (issueResp.status !== 200) {
+            throw new Error(`Failed to fetch issue data: ${issueResp.status}`);
+        }
+        const issue = issueResp.data;
         const result = {
-            Name: properties_1.properties.title(payload.issue.title),
-            Status: properties_1.properties.getStatusSelectOption(payload.issue.state),
+            Name: properties_1.properties.title(issue.title),
+            Status: properties_1.properties.getStatusSelectOption(issue.state),
             Organization: properties_1.properties.text((_c = (_b = payload.organization) === null || _b === void 0 ? void 0 : _b.login) !== null && _c !== void 0 ? _c : ''),
             Repository: properties_1.properties.text(payload.repository.name),
-            Number: properties_1.properties.number(payload.issue.number),
-            Body: properties_1.properties.richText(parseBodyRichText(payload.issue.body)),
-            Assignees: properties_1.properties.multiSelect(payload.issue.assignees.map(assignee => assignee.login)),
-            Milestone: properties_1.properties.text((_e = (_d = payload.issue.milestone) === null || _d === void 0 ? void 0 : _d.title) !== null && _e !== void 0 ? _e : ''),
-            Labels: properties_1.properties.multiSelect((_g = (_f = payload.issue.labels) === null || _f === void 0 ? void 0 : _f.map(label => label.name)) !== null && _g !== void 0 ? _g : []),
-            Author: properties_1.properties.text(payload.issue.user.login),
-            Created: properties_1.properties.date(payload.issue.created_at),
-            Updated: properties_1.properties.date(payload.issue.updated_at),
-            ID: properties_1.properties.number(payload.issue.id),
-            Link: properties_1.properties.url(payload.issue.html_url),
+            Number: properties_1.properties.number(issue.number),
+            Body: properties_1.properties.richText(parseBodyRichText(issue.body)),
+            Assignees: properties_1.properties.multiSelect(issue.assignees.map(assignee => assignee.login)),
+            Milestone: properties_1.properties.text((_e = (_d = issue.milestone) === null || _d === void 0 ? void 0 : _d.title) !== null && _e !== void 0 ? _e : ''),
+            Labels: properties_1.properties.multiSelect((_g = (_f = issue.labels) === null || _f === void 0 ? void 0 : _f.map(label => label.name)) !== null && _g !== void 0 ? _g : []),
+            Author: properties_1.properties.text(issue.user.login),
+            Created: properties_1.properties.date(issue.created_at),
+            Updated: properties_1.properties.date(issue.updated_at),
+            ID: properties_1.properties.number(issue.id),
+            Link: properties_1.properties.url(issue.html_url),
             Project: properties_1.properties.text((projectData === null || projectData === void 0 ? void 0 : projectData.name) || ''),
             'Project Column': properties_1.properties.text((projectData === null || projectData === void 0 ? void 0 : projectData.columnName) || ''),
         };
